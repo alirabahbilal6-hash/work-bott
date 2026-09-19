@@ -123,7 +123,7 @@ async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_keyboard(),
         parse_mode="Markdown"
     )
-[19/09/2026 21:58] Bilal Voice: if name == "main":
+
     # ضع توكن البوت الخاص بك هنا
     TOKEN = "8665377975:AAGS1rFg_WcecKK_1OkByc7KCwiHOGuy8A4"
     
