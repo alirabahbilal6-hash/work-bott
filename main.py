@@ -126,6 +126,24 @@ async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ضع توكن البوت الخاص بك هنا
     TOKEN = "8665377975:AAGS1rFg_WcecKK_1OkByc7KCwiHOGuy8A4"
     
+   if name == "main":
+    init_db()
+
+    # تشغيل خادم شبكة وهمي لإبقاء Render حياً
+    import http.server
+    import socketserver
+    import threading
+
+    def run_dummy_server():
+        port = int(os.environ.get("PORT", 8080))
+        handler = http.server.SimpleHTTPRequestHandler
+        with socketserver.TCPServer(("", port), handler) as httpd:
+            httpd.serve_forever()
+
+    threading.Thread(target=run_dummy_server, daemon=True).start()
+
+    # تشغيل البوت
+    print("البوت يعمل الآن...")
     app = ApplicationBuilder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
@@ -134,12 +152,11 @@ async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
             HOURS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_hours)],
             WAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_wage)],
         },
-        fallbacks=[CommandHandler("cancel", cancel)]
+        fallbacks=[CommandHandler("cancel", cancel)],
     )
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(conv_handler)
     app.add_handler(MessageHandler(filters.Regex("^تقرير الساعات والأجر$"), show_report))
 
-    print("البوت يعمل الآن...")
     app.run_polling()
