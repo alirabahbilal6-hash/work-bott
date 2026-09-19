@@ -1,4 +1,4 @@
-[19/09/2026 21:58] Bilal Voice: import os
+
 import sqlite3
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup
