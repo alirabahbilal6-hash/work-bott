@@ -1,4 +1,4 @@
-
+import os
 import sqlite3
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup
@@ -7,10 +7,9 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    Conversationhandler,
+    ConversationHandler,
     filters,
 )
-
 # الحالات الخاصة بالحوار (Conversation States)
 HOURS, WAGE = range(2)
 
