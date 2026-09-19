@@ -10,14 +10,15 @@ from telegram.ext import (
     ConversationHandler,
     filters,
 )
-# الحالات الخاصة بالحوار (Conversation States)
+
+# الحالات الخاصة بالحوار
 HOURS, WAGE = range(2)
 
 # إنشاء قاعدة البيانات والجدول إذا لم تكن موجودة
 def init_db():
     conn = sqlite3.connect("work_hours.db")
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS work_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -25,90 +26,78 @@ def init_db():
             hours REAL,
             hourly_wage REAL
         )
-    """)
+    ''')
     conn.commit()
     conn.close()
 
 # لوحة الأزرار الرئيسية
 def main_keyboard():
     return ReplyKeyboardMarkup(
-        [["تسجيل ساعات العمل", "تقرير الساعات والأجر"]],
+        [["تسجيل ساعات العمل"], ["تقرير الساعات والأجر"]],
         resize_keyboard=True
     )
 
-# أمر البداية /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    init_db()
     await update.message.reply_text(
-        "مرحباً بك في بوت تسجيل ساعات العمل والأجر!\nاختر أحد الخيارات من القائمة أدناه:",
+        "مرحباً بك! اختر من القائمة أدناه لتسجيل ساعات عملك أو عرض التقرير:",
         reply_markup=main_keyboard()
     )
 
-# بداية عملية تسجيل الساعات
+# بداية حوار تسجيل الساعات
 async def add_hours_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("كم عدد الساعات التي عملتها اليوم؟ (أدخل رقماً مثل: 8 أو 7.5)")
+    await update.message.reply_text("كم عدد الساعات التي عملتها اليوم؟")
     return HOURS
 
-# استقبال عدد الساعات والطلب الأجر
 async def get_hours(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        hours = float(update.message.text.strip())
-        context.user_data["hours"] = hours
-        await update.message.reply_text("أدخل أجر الساعة الواحدة (مثال: 250):")
+        hours = float(update.message.text)
+        context.user_data['hours'] = hours
+        await update.message.reply_text("ما هو أجرك للساعة الواحدة؟")
         return WAGE
     except ValueError:
-        await update.message.reply_text("يرجى إدخال رقم صحيح أو عشري لعدد الساعات.")
+        await update.message.reply_text("الرجاء إدخال رقم صحيح لعدد الساعات.")
         return HOURS
 
-# حفظ البيانات في قاعدة البيانات
 async def get_wage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        wage = float(update.message.text.strip())
-        hours = context.user_data.get("hours")
+        wage = float(update.message.text)
+        hours = context.user_data.get('hours')
         user_id = update.effective_user.id
-        date_str = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().strftime("%Y-%m-%d")
 
         conn = sqlite3.connect("work_hours.db")
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO work_logs (user_id, date, hours, hourly_wage) VALUES (?, ?, ?, ?)",
-            (user_id, date_str, hours, wage)
+            (user_id, today, hours, wage)
         )
         conn.commit()
         conn.close()
 
-        total_day = hours * wage
+        total_day_wage = hours * wage
         await update.message.reply_text(
-            f" تم حفظ البيانات بنجاح!\n"
-            f"التاريخ: {date_str}\n"
-            f"الساعات: {hours} ساعة\n"
-            f"أجر اليوم: {total_day:.2f}",
+            f"تم تسجيل {hours} ساعة بأجر {wage} للساعة.\nإجمالي أجر اليوم: {total_day_wage:.2f}",
             reply_markup=main_keyboard()
         )
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("يرجى إدخال رقم صحيح لأجر الساعة.")
+        await update.message.reply_text("الرجاء إدخال رقم صحيح للأجر.")
         return WAGE
 
-# إلغاء العملية
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("تم إلغاء العملية.", reply_markup=main_keyboard())
     return ConversationHandler.END
 
-# عرض التقرير المالي والساعات
 async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     conn = sqlite3.connect("work_hours.db")
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT hours, hourly_wage FROM work_logs WHERE user_id = ?",
-        (user_id,)
-    )
+    cursor.execute("SELECT hours, hourly_wage FROM work_logs WHERE user_id = ?", (user_id,))
     rows = cursor.fetchall()
     conn.close()
 
     if not rows:
-        await update.message.reply_text("لا توجد أي سجلات محفوظة لك حتى الآن.", reply_markup=main_keyboard())
+        await update.message.reply_text("لا توجد بيانات مسجلة بعد.", reply_markup=main_keyboard())
         return
 
     total_hours = sum(row[0] for row in rows)
@@ -116,25 +105,22 @@ async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"📊 تقرير العمل الخاص بك:\n\n"
-        f" إجمالي الساعات المسجلة: {total_hours:.2f} ساعة\n"
+        f"⏱ إجمالي الساعات المسجلة: {total_hours:.2f} ساعة\n"
         f"💰 إجمالي الأجر المستحق: {total_earnings:.2f}\n"
-        f" عدد أيام العمل المسجلة: {len(rows)} يوم",
+        f"📅 عدد أيام العمل المسجلة: {len(rows)} يوم",
         reply_markup=main_keyboard(),
         parse_mode="Markdown"
     )
 
-    # ضع توكن البوت الخاص بك هنا
-    TOKEN = "8665377975:AAGS1rFg_WcecKK_1OkByc7KCwiHOGuy8A4"
-    
-   if name == "main":
+TOKEN = "8665377975:AAGS3rFg_WceKK_10kByc7KCwiHOGuy8A4"
+
+if name == "main":
     init_db()
 
-    # تشغيل خادم شبكة وهمي لإبقاء Render حياً
     import http.server
     import socketserver
     import threading
-
-    def run_dummy_server():
+[19/09/2026 22:56] Bilal Voice: def run_dummy_server():
         port = int(os.environ.get("PORT", 8080))
         handler = http.server.SimpleHTTPRequestHandler
         with socketserver.TCPServer(("", port), handler) as httpd:
@@ -142,7 +128,6 @@ async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     threading.Thread(target=run_dummy_server, daemon=True).start()
 
-    # تشغيل البوت
     print("البوت يعمل الآن...")
     app = ApplicationBuilder().token(TOKEN).build()
 
