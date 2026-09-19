@@ -7,7 +7,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    ConversationLogic,
+    Conversationhandler,
     filters,
 )
 
